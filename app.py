@@ -390,3 +390,4 @@ if not combined_df.empty:
 else:
     st.write("No data available. Upload your Trading 212 CSV to begin.")
 
+
