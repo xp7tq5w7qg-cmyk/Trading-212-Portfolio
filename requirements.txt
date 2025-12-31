@@ -1,3 +1,4 @@
+pillow==9.4.0
 streamlit==1.26.0
 pandas
 yfinance
