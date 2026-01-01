@@ -55,12 +55,12 @@ drip_years = st.sidebar.slider("Years to simulate", 1, 30, 5)
 @st.cache_data(show_spinner=False)
 def get_fx_rate(from_ccy, to_ccy):
     if from_ccy == to_ccy:
-        return 1.0
+        return 1
     ticker = f"{from_ccy}{to_ccy}=X"
     fx = yf.Ticker(ticker)
     hist = fx.history(period="5d")
     if hist.empty:
-        return 1.0
+        return 1
     return hist["Close"].iloc[-1]
 
 # Dividend historical info
@@ -79,7 +79,7 @@ def get_dividend_history(ticker):
 # Dividend CAGR
 def calculate_dividend_cagr(dividends, years=5):
     if dividends.empty:
-        return 0.0
+        return 0
     payment_dates=None
     if not dividends.empty:
         payment_dates = pd.to_datetime(payment_dates)
@@ -89,12 +89,12 @@ def calculate_dividend_cagr(dividends, years=5):
     
     annual = annual[annual > 0]
     if len(annual) < 2:
-        return 0.0
+        return 0
     start = annual.iloc[-min(years, len(annual))]
     end = annual.iloc[-1]
     n = len(annual) - 1
     if start <= 0 or n <= 0:
-        return 0.0
+        return 0
     return (end / start) ** (1 / n) - 1
 
 # DRIP Simulation
