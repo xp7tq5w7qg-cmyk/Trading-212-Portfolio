@@ -5,9 +5,7 @@ import altair as alt
 from datetime import datetime, timedelta
 
 
-# -------------------------------
-# App Configuration
-# -------------------------------
+
 st.set_page_config(page_title="My Portfolio Tracker", layout="wide")
 st.title("My Trading 212 Portfolio Tracker")
 st.write("""
@@ -18,9 +16,8 @@ Upload your Trading 212 CSV file to see:
 - Projected DRIP growth
 """)
 
-# -------------------------------
 # Sidebar
-# -------------------------------
+# Upload CVSs, combine and remove duplicates
 dataframes = []
 combined_df = pd.DataFrame()
 uploaded_files = st.sidebar.file_uploader(
@@ -28,23 +25,17 @@ uploaded_files = st.sidebar.file_uploader(
 )
 
 if uploaded_files:
-    # Read all uploaded CSVs into DataFrames
     dataframes = [pd.read_csv(file) for file in uploaded_files]
-    
-    # Combine them into a single DataFrame
     combined_df = pd.concat(dataframes, ignore_index=True)
 
-    # Remove duplicate rows
     before = combined_df.shape[0]
     combined_df = combined_df.drop_duplicates(ignore_index=True)
     after = combined_df.shape[0]
     st.success("CSV files combined successfully!")
 
-    # Show combined data
     st.write("Below is the combined data from all uploaded CSV files. You can review your tickers, shares, and transactions.")
     st.dataframe(combined_df)
     
-    # Provide a download button for the combined CSV
     csv = combined_df.to_csv(index=False).encode('utf-8')
     st.sidebar.download_button(
         label="Download Combined CSV",
@@ -60,9 +51,7 @@ st.sidebar.subheader("DRIP Simulation")
 drip_years = st.sidebar.slider("Years to simulate", 1, 30, 5)
 drip_enabled = st.sidebar.checkbox("Enable DRIP", value=True)
 
-# -------------------------------
 # FX rate
-# -------------------------------
 @st.cache_data(show_spinner=False)
 def get_fx_rate(from_ccy, to_ccy):
     if from_ccy == to_ccy:
@@ -74,9 +63,7 @@ def get_fx_rate(from_ccy, to_ccy):
         return 1.0
     return hist["Close"].iloc[-1]
 
-# -------------------------------
-# Dividend history
-# -------------------------------
+# Dividend historical info
 @st.cache_data(show_spinner=False)
 def get_dividend_history(ticker):
     try:
@@ -89,9 +76,7 @@ def get_dividend_history(ticker):
     except Exception:
         return pd.Series(dtype=float)
 
-# -------------------------------
 # Dividend CAGR
-# -------------------------------
 def calculate_dividend_cagr(dividends, years=5):
     if dividends.empty:
         return 0.0
@@ -106,9 +91,7 @@ def calculate_dividend_cagr(dividends, years=5):
         return 0.0
     return (end / start) ** (1 / n) - 1
 
-# -------------------------------
 # DRIP Simulation
-# -------------------------------
 def simulate_drip(shares, annual_dividend, price, years):
     shares_over_time = [shares]
     yearly_income = []
@@ -121,17 +104,14 @@ def simulate_drip(shares, annual_dividend, price, years):
         shares_over_time.append(shares)
     return shares_over_time, yearly_income
 
-# -------------------------------
-# Main Logic
-# -------------------------------
+
+# Main
 if not combined_df.empty:
-    # Detect columns
     ticker_col = next(c for c in ["Ticker", "Stock Ticker", "Instrument"] if c in combined_df.columns)
     qty_col = next(c for c in ["No. of shares", "Shares", "Shares Owned"] if c in combined_df.columns)
     action_col = next((c for c in ["Action", "Type", "Transaction Type"] if c in combined_df.columns), None)
 
     if action_col:
-        # Convert buys/sells to signed quantities safely
         def signed_shares(row):
             action = str(row[action_col]).strip().lower()
             if "buy" in action:
@@ -139,47 +119,33 @@ if not combined_df.empty:
             elif "sell" in action:
                 return -row[qty_col]
             else:
-                # Treat unknown actions as 0
                 return 0
 
         combined_df["Signed Shares"] = combined_df.apply(signed_shares, axis=1)
         share_col = "Signed Shares"
     else:
-        st.warning("No Action column detected. Assuming all rows are buys.")
+        st.warning("No Sell Action column detected.")
         share_col = qty_col
 
-    # Aggregate net holdings per ticker
     df = (
         combined_df.groupby(ticker_col, as_index=False)[share_col]
         .sum()
         .rename(columns={ticker_col: "Ticker", share_col: "Shares"})
     )
 
-    # Keep only positive holdings, but warn if some were filtered out
     positive_df = df[df["Shares"] > 0]
     if positive_df.empty:
-        st.info("No holdings remain after processing buy/sell actions (all net to zero or negative).")
+        st.info("No holdings detected.")
     else:
         df = positive_df
         st.success(f"Processed {len(df)} tickers with positive holdings.")
 
-    # Optional: show rows that were filtered out
-    removed_df = df[df["Shares"] <= 0]
-    if not removed_df.empty:
-        st.warning(f"Removed {len(removed_df)} tickers with zero or negative net shares.")
-
-    # -------------------------------
-    # Share Distribution Summary
-    # -------------------------------
+    # Portfolio Share Distribution 
     st.subheader("Portfolio Share Distribution")
-
-    # Calculate % of total shares per stock
     df["Share %"] = (df["Shares"] / df["Shares"].sum()) * 100
-
-    #   Display table
     st.dataframe(df[["Ticker", "Shares", "Share %"]].style.format({"Shares": "{:.2f}", "Share %": "{:.2f}%"}))
 
-    # Pie chart visualization
+    # Pie chart visualisation
     share_pie = alt.Chart(df).mark_arc().encode(
         theta="Share %:Q",
         color="Ticker:N",
@@ -190,7 +156,7 @@ if not combined_df.empty:
 
     st.altair_chart(share_pie, use_container_width=True)
 
-    # Optional: Bar chart
+    # Bar chart visualisation
     share_bar = alt.Chart(df).mark_bar().encode(
         x="Ticker:N",
         y="Share %:Q",
@@ -205,7 +171,6 @@ if not combined_df.empty:
     if df.empty:
         st.info("No holdings after processing buy/sell actions.")
     else:
-        # Initialize result columns
         df["Annual Dividend / Share"] = 0.0
         df["Annual Income"] = 0.0
         df["Dividend CAGR %"] = 0.0
@@ -251,7 +216,6 @@ if not combined_df.empty:
                         df.at[i, "Shares After DRIP"] = shares_path[-1]
                         df.at[i, "Income After DRIP"] = income_path[-1]
 
-        # Calendar DataFrame
         calendar_df = pd.DataFrame(calendar_rows).groupby(["Month", "Ticker"], as_index=False)["Dividend"].sum().sort_values("Month")
 
         # Currency conversion
@@ -263,9 +227,7 @@ if not combined_df.empty:
         monthly_df["Month"] = pd.Categorical(monthly_df["Month"], categories=month_order, ordered=True)
         monthly_df = monthly_df.sort_values("Month")
 
-        # -------------------------------
         # Display
-        # -------------------------------
         st.subheader("Dividend Portfolio Overview")
         st.dataframe(df.style.format({
             "Annual Dividend / Share": "{:.2f}",
@@ -318,9 +280,7 @@ if not combined_df.empty:
         ).properties(title="Projected Monthly Income")
         st.altair_chart(monthly_chart, use_container_width=True)
 
-        # -------------------------------
-        # DRIP Growth Projection for all stocks
-        # -------------------------------      
+        # DRIP Growth Projection for all stocks      
         if drip_enabled:
             st.subheader("Overall DRIP Growth Projection")
             drip_chart = alt.Chart(
@@ -332,19 +292,15 @@ if not combined_df.empty:
             )
             st.altair_chart(drip_chart, use_container_width=True)
 
-        # -------------------------------
-        # DRIP Simulation per Stock
-        # -------------------------------
+        # DRIP Simulation per Ticker
         if drip_enabled and not df.empty:
             st.subheader("DRIP Simulation per Stock")
 
-            # Let user select the stock
             tickers = df["Ticker"].tolist()
             selected_ticker = st.selectbox("Select a stock to simulate DRIP:", tickers)
 
             drip_data = []
 
-            # Get data only for selected stock
             row = df[df["Ticker"] == selected_ticker].iloc[0]
             shares = row["Shares"]
             annual_div = row["Annual Dividend / Share"]
@@ -357,7 +313,6 @@ if not combined_df.empty:
         if price > 0:
             shares_path, income_path = simulate_drip(shares, annual_div, price, drip_years)
 
-            # Store results for visualization
             for year, s in enumerate(shares_path):
                 drip_data.append({
                     "Ticker": selected_ticker,
