@@ -50,7 +50,6 @@ base_currency = st.sidebar.selectbox("Portfolio Base Currency", ["USD", "GBP", "
 # DRIP slider
 st.sidebar.subheader("DRIP Simulation")
 drip_years = st.sidebar.slider("Years to simulate", 1, 30, 5)
-drip_enabled = st.sidebar.checkbox("Enable DRIP", value=True)
 
 # FX rate
 @st.cache_data(show_spinner=False)
@@ -81,7 +80,13 @@ def get_dividend_history(ticker):
 def calculate_dividend_cagr(dividends, years=5):
     if dividends.empty:
         return 0.0
-    annual = dividends.resample("Y").sum()
+    payment_dates=None
+    if not dividends.empty:
+        payment_dates = pd.to_datetime(payment_dates)
+    dividends = pd.Series(dividends, index=payment_dates)
+    yearly_groups = dividends.resample("Y")
+    annual = yearly_groups.sum()
+    
     annual = annual[annual > 0]
     if len(annual) < 2:
         return 0.0
@@ -101,16 +106,16 @@ def simulate_drip(shares, annual_dividend, price, years):
         yearly_income.append(income)
         # reinvest
         new_shares = income / price
-        shares += new_shares
+        shares =shares + new_shares
         shares_over_time.append(shares)
     return shares_over_time, yearly_income
 
 
 # Main
 if not combined_df.empty:
-    ticker_col = next(c for c in ["Ticker", "Stock Ticker", "Instrument"] if c in combined_df.columns)
-    qty_col = next(c for c in ["No. of shares", "Shares", "Shares Owned"] if c in combined_df.columns)
-    action_col = next((c for c in ["Action", "Type", "Transaction Type"] if c in combined_df.columns), None)
+    ticker_col = "Ticker"
+    qty_col = "No. of shares"
+    action_col = "Action"
 
     if action_col:
         def signed_shares(row):
@@ -128,11 +133,17 @@ if not combined_df.empty:
         st.warning("No Sell Action column detected.")
         share_col = qty_col
 
-    df = (
-        combined_df.groupby(ticker_col, as_index=False)[share_col]
-        .sum()
-        .rename(columns={ticker_col: "Ticker", share_col: "Shares"})
+    grouped=combined_df.groupby(ticker_col)
+    shares_by_ticker = grouped[share_col]
+    sum_of_shares = shares_by_ticker.sum()
+    sum_of_shares = sum_of_shares.reset_index()
+    sum_of_shares = sum_of_shares.rename(
+        columns={
+            ticker_col: "Ticker",
+            share_col: "Shares"
+        }
     )
+    df = sum_of_shares
 
     positive_df = df[df["Shares"] > 0]
     if positive_df.empty:
@@ -207,15 +218,14 @@ if not combined_df.empty:
                 df.at[i, "Dividend CAGR %"] = cagr * 100
 
                 # DRIP simulation
-                if drip_enabled:
-                    try:
-                        price = yf.Ticker(row["Ticker"]).history(period="5d")["Close"].iloc[-1]
-                    except Exception:
-                        price = 0
-                    if price > 0:
-                        shares_path, income_path = simulate_drip(row["Shares"], annual_div, price, drip_years)
-                        df.at[i, "Shares After DRIP"] = shares_path[-1]
-                        df.at[i, "Income After DRIP"] = income_path[-1]
+                try:
+                    price = yf.Ticker(row["Ticker"]).history(period="5d")["Close"].iloc[-1]
+                except Exception:
+                    price = 0
+                if price > 0:
+                    shares_path, income_path = simulate_drip(row["Shares"], annual_div, price, drip_years)
+                    df.at[i, "Shares After DRIP"] = shares_path[-1]
+                    df.at[i, "Income After DRIP"] = income_path[-1]
 
         calendar_df = pd.DataFrame(calendar_rows).groupby(["Month", "Ticker"], as_index=False)["Dividend"].sum().sort_values("Month")
 
@@ -282,19 +292,18 @@ if not combined_df.empty:
         st.altair_chart(monthly_chart, use_container_width=True)
 
         # DRIP Growth Projection for all stocks      
-        if drip_enabled:
-            st.subheader("Overall DRIP Growth Projection")
-            drip_chart = alt.Chart(
-                pd.DataFrame({"Year": range(drip_years + 1), "Shares": shares_path})
-            ).mark_line(point=True).encode(
-                x="Year:Q",
-                y="Shares:Q",
-                tooltip=["Year", "Shares"]
-            )
-            st.altair_chart(drip_chart, use_container_width=True)
+        st.subheader("Overall DRIP Growth Projection")
+        drip_chart = alt.Chart(
+            pd.DataFrame({"Year": range(drip_years + 1), "Shares": shares_path})
+        ).mark_line(point=True).encode(
+            x="Year:Q",
+            y="Shares:Q",
+            tooltip=["Year", "Shares"]
+        )
+        st.altair_chart(drip_chart, use_container_width=True)
 
         # DRIP Simulation per Ticker
-        if drip_enabled and not df.empty:
+        if not df.empty:
             st.subheader("DRIP Simulation per Stock")
 
             tickers = df["Ticker"].tolist()
@@ -345,4 +354,3 @@ if not combined_df.empty:
                 st.warning(f"Could not fetch price data for {selected_ticker}.")
 else:
     st.write("No data available. Upload your Trading 212 CSV to begin.")
-
