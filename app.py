@@ -10,6 +10,7 @@ st.set_page_config(page_title="My Portfolio Tracker", layout="wide")
 st.title("My Trading 212 Portfolio Tracker")
 st.write("""
 Upload your Trading 212 CSV file to see:
+- Portfolio share distribution
 - Projected annual & monthly dividend income
 - Dividend growth rates
 - Currency-adjusted portfolio visuals
