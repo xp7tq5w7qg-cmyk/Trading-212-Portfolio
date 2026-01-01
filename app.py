@@ -353,8 +353,4 @@ if not combined_df.empty:
         else:
                 st.warning(f"Could not fetch price data for {selected_ticker}.")
 else:
-<<<<<<< Updated upstream
     st.write("No data available. Upload your Trading 212 CSV to begin.")
-=======
-    st.write("No data available. Upload your Trading 212 CSV to begin.")
->>>>>>> Stashed changes
