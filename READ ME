@@ -1,0 +1,78 @@
+# My Trading212 Portfolio Dividend Tracker Project Report  
+---
+ 
+## Executive Summary  
+This project allows the user to upload their Trading 212 portfolio and produces the portfolio's share distribution. Furthemore, it's leveraging the latest updated dividend data from Yahoo Finance to provide a view of the portfolio's projected annual and monthly dividend income. It can also calculate the dividend growth rate and projected DRIP growth whilst providing currency adjusted visuals in the 3 main currencies, GBP, USD and EUR.
+ 
+---
+ 
+## Project Background and Objectives  
+ 
+This dividend tracker allows the user to track the actual cash they earn from their holdings and on what date the payment is expected. This will benefit particularly income investors (such as pensioners or perople who invest in order to receive a passive income) as they can now forecast their dividend income and budget with much more confidence. It can also signal how well the user's dividend strategy is performing as the dividend growth rate will be useful to identify any growth trends and determine whether the dividend income is increasing, declining or remaining flat over time. Finally, the projected DRIP growth feature will benefit those investors that use dividends to reinvest into their existing portfolio or track the portfolio performance beyond the holding price.
+ 
+---
+ 
+## Dataset Description  
+ 
+- **Source:** Trading 212 History Transactions
+- **Observations:** User holdings (Ticker)
+- **Target Variable:** Projected Dividends, Dividend Growth rate and Projected DRIP Growth  
+- **Feature Types:**  
+  - Numerical (e.g. No of shares, Share %, Annual Dividend, Annual Income etc )  
+  - Categorical (e.g. Ticker, Action)  
+ 
+---
+ 
+## Data Preparation  
+ 
+Minimal preparation of data was conducted to ensure data quality:
+ 
+- Removal of duplicate records  
+- Conversion of the target variable to binary format  
+- Basic handling of missing values  
+ 
+---
+ 
+## Deployment Considerations  
+ 
+Streamlit was used for the deployment of this app due to it's data driven financial dashboard visualisation capabilities with easy filtering options. Streamlit is designed for Panda dataframes and financial metrics and also provides real time updates when data  changes.
+ 
+Altair was used as it's excellent for time-series visualisations and works seamlessly with Streamlit.
+ 
+Pandas is the core Python library for structured data manipulation and provides fast filtering, grouping and aggregation options.
+ 
+**Deployment recommendations:**
+- Ensure user understands the data is processed locally and temporarily  
+- Provide a disclaimer like "Capital at risk" and other assumptions as this is based in historical data and elements such as dividend frequency or dividend pay might change.
+- Provide clear upload instructions
+- Include loading indicators for large files
+ 
+Ongoing monitoring is required to detect data drift and maintain performance.
+ 
+---
+ 
+## Limitations and Future Enhancements  
+ 
+- Increased risk of user error such as data may be outdated between uploads or files could be incorrect/incomplete.
+- Dividend projections are based on historical data.
+- No reflection of withholding taxes as taxes varies by country etc.
+- No performance optimisation for larger portfolios.
+- No current multi user support capabilitiy.
+- Scalability considerations such as move to Docker-based deployment.
+- Secure API integration with brokers to eliminate manual uploads and improve accuracy.  
+- Additional features (such as scenario based projections for best and worst case) could improve performance
+- Features like dividend consistency scoring could provide deeper portfolio insights.  
+ 
+ 
+---
+ 
+## Final Summary  
+ 
+To summarise, this is a tool that could potentially:
+-Improve financial awareness
+-Aid planning
+-Highlight trends
+-Provide additional understanding of the portfolio performance
+ 
+This tool delivers robust dividend projections and actionable insights that enable proactive portfolio management and decision making, demonstrating the practical application of Python and Streamlit in real-world business contexts.
+ 
