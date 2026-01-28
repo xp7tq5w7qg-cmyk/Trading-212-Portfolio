@@ -5,7 +5,6 @@ import altair as alt
 from datetime import datetime, timedelta
 
 
-
 st.set_page_config(page_title="My Portfolio Tracker", layout="wide")
 st.title("My Trading 212 Portfolio Tracker")
 st.write("""
@@ -207,6 +206,7 @@ if not combined_df.empty:
                     future_date = date + pd.DateOffset(years=1)
                     calendar_rows.append({
                         "Ticker": row["Ticker"],
+                        "Date": future_date.normalize(),
                         "Month": future_date.strftime("%Y-%m"),
                         "Dividend": value * row["Shares"]
                     })
@@ -260,6 +260,40 @@ if not combined_df.empty:
             color="Ticker:N",
             tooltip=["Ticker", "Dividend"]
         ).properties(title="Projected Dividend Distribution per month")
+        st.altair_chart(calendar_chart, use_container_width=True)
+
+        calendar_daily = (
+            pd.DataFrame(calendar_rows)
+            .groupby(["Date", "Ticker"], as_index=False)["Dividend"]
+            .sum()
+            .sort_values("Date")
+        )
+        
+        # Daily display
+        st.subheader("Dividend Calendar – Next 12 Months (Daily)")
+        calendar_pivot = (
+            calendar_daily
+            .pivot(index="Date", columns="Ticker", values="Dividend")
+            .fillna(0)
+            .sort_index()
+        )
+
+        st.dataframe(calendar_pivot.style.format("{:,.2f}"))
+
+        # Daily bar chart
+        calendar_chart = alt.Chart(calendar_daily).mark_bar().encode(
+            x=alt.X("Date:T", title="Date"),
+            y=alt.Y("Dividend:Q", title="Dividend"),
+            color="Ticker:N",
+            tooltip=[
+            alt.Tooltip("Date:T", title="Date"),
+            alt.Tooltip("Ticker:N"),
+            alt.Tooltip("Dividend:Q", format=",.2f")
+            ]
+        ).properties(
+            title="Projected Dividend Distribution per Day"
+        )
+
         st.altair_chart(calendar_chart, use_container_width=True)
 
         # Charts
