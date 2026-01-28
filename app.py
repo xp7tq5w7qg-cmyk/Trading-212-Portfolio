@@ -280,6 +280,17 @@ if not combined_df.empty:
 
         st.dataframe(calendar_pivot.style.format("{:,.2f}"))
 
+        st.subheader("Daily Dividends List")
+        
+        # Group by Date and list all tickers with dividends
+        daily_list = (
+            calendar_daily.groupby("Date")
+            .apply(lambda x: ", ".join([f"{row['Ticker']}: {row['Dividend']:.2f}" for _, row in x.iterrows()]))
+            .reset_index(name="Dividends")
+        )
+
+        st.dataframe(daily_list)
+
         # Daily bar chart
         calendar_chart = alt.Chart(calendar_daily).mark_bar().encode(
             x=alt.X("Date:T", title="Date"),
